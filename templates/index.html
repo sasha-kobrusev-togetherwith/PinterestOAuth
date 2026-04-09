@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pinterest OAuth Local Demo</title>
+    <style>
+      :root {
+        --bg: #f4efe5;
+        --panel: #fffaf1;
+        --ink: #14213d;
+        --accent: #c1121f;
+        --accent-dark: #780000;
+        --muted: #6b7280;
+        --border: #e8dcc7;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background:
+          radial-gradient(circle at top left, #f8d7da 0, transparent 28%),
+          radial-gradient(circle at bottom right, #e9edc9 0, transparent 30%),
+          var(--bg);
+        color: var(--ink);
+      }
+
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 40px 20px 64px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 20px;
+        margin-bottom: 28px;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-size: clamp(2rem, 5vw, 4rem);
+        line-height: 0.95;
+        letter-spacing: -0.04em;
+      }
+
+      .hero p {
+        max-width: 720px;
+        margin: 0;
+        font-size: 1.1rem;
+        line-height: 1.6;
+      }
+
+      .card {
+        background: color-mix(in srgb, var(--panel) 92%, white 8%);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 20px;
+        box-shadow: 0 14px 30px rgba(20, 33, 61, 0.07);
+        margin-bottom: 18px;
+      }
+
+      .card h2 {
+        margin-top: 0;
+      }
+
+      .pill {
+        display: inline-block;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #efe4cf;
+        margin: 0 8px 8px 0;
+        font-size: 0.9rem;
+      }
+
+      .grid {
+        display: grid;
+        gap: 18px;
+      }
+
+      @media (min-width: 860px) {
+        .grid {
+          grid-template-columns: 1.1fr 0.9fr;
+        }
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      button,
+      .button-link {
+        border: 0;
+        cursor: pointer;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font: inherit;
+        text-decoration: none;
+        background: var(--accent);
+        color: white;
+        transition: transform 140ms ease, background 140ms ease;
+      }
+
+      button:hover,
+      .button-link:hover {
+        transform: translateY(-1px);
+        background: var(--accent-dark);
+      }
+
+      .secondary {
+        background: #efe4cf;
+        color: var(--ink);
+      }
+
+      .warning {
+        color: var(--accent-dark);
+      }
+
+      pre {
+        overflow-x: auto;
+        padding: 14px;
+        border-radius: 12px;
+        background: #fff;
+        border: 1px solid var(--border);
+        font-size: 0.92rem;
+      }
+
+      dl {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 10px 16px;
+        margin: 0;
+      }
+
+      dt {
+        font-weight: bold;
+      }
+
+      dd {
+        margin: 0;
+        color: var(--muted);
+        word-break: break-word;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <h1>Pinterest OAuth, locally.</h1>
+        <p>
+          This Flask app gives you a safe local harness for the full Pinterest authorization-code
+          flow: send the user to Pinterest, receive the callback, exchange the code for tokens, and
+          test a couple of API calls with the returned access token.
+        </p>
+      </section>
+
+      <div class="grid">
+        <section class="card">
+          <h2>OAuth flow</h2>
+          <p>Registered callback:</p>
+          <div class="pill">{{ redirect_uri }}</div>
+          <p>Requested scopes:</p>
+          {% for scope in scopes.split(",") %}
+            <div class="pill">{{ scope.strip() }}</div>
+          {% endfor %}
+
+          <div class="actions" style="margin-top: 18px;">
+            <a class="button-link" href="{{ url_for('login') }}">Connect Pinterest</a>
+            <form method="post" action="{{ url_for('refresh') }}">
+              <button type="submit" class="secondary">Refresh token</button>
+            </form>
+            <form method="post" action="{{ url_for('logout') }}">
+              <button type="submit" class="secondary">Clear session</button>
+            </form>
+          </div>
+
+          {% if missing %}
+            <p class="warning">
+              Missing environment variables: {{ ", ".join(missing) }}
+            </p>
+          {% endif %}
+        </section>
+
+        <section class="card">
+          <h2>Session token summary</h2>
+          <dl>
+            <dt>Access token</dt>
+            <dd>{{ token_summary.access_token or "Not present" }}</dd>
+            <dt>Refresh token</dt>
+            <dd>{{ token_summary.refresh_token or "Not present" }}</dd>
+            <dt>Scope</dt>
+            <dd>{{ token_summary.scope or "Not present" }}</dd>
+            <dt>Type</dt>
+            <dd>{{ token_summary.token_type or "Not present" }}</dd>
+            <dt>Expires in</dt>
+            <dd>{{ token_summary.expires_in or "Not present" }}</dd>
+          </dl>
+        </section>
+      </div>
+
+      <section class="card">
+        <h2>API checks</h2>
+        <div class="actions">
+          <form method="post" action="{{ url_for('fetch_user') }}">
+            <button type="submit">Fetch `/user_account`</button>
+          </form>
+          <form method="post" action="{{ url_for('fetch_ad_accounts') }}">
+            <button type="submit">Fetch `/ad_accounts`</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Latest result</h2>
+        <pre>{{ results | tojson(indent=2) }}</pre>
+      </section>
+    </main>
+  </body>
+</html>
